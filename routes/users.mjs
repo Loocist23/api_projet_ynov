@@ -146,4 +146,50 @@ router.get('/:id/avatar', async (req, res) => {
   }
 });
 
+// Route pour créer un utilisateur
+router.post('/create', upload.single('avatar'), async (req, res) => {
+  try {
+    console.log('Corps de la requête:', req.body);
+    console.log('Fichiers de la requête:', req.file);
+
+    const formData = new FormData();
+
+    // Ajouter les champs du corps de la requête à formData
+    for (const [key, value] of Object.entries(req.body)) {
+      formData.append(key, value);
+    }
+
+    // Ajouter les fichiers à formData
+    if (req.file) {
+      formData.append('avatar', req.file.buffer, req.file.originalname);
+    }
+
+    const response = await fetch(`https://pocketbase.0shura.fr/api/collections/users/records`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pb.authStore.token}`,
+        ...formData.getHeaders()
+      },
+      body: formData
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
+    }
+
+    const record = await response.json();
+    res.json(record);
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'enregistrement:', error);
+    if (error instanceof ClientResponseError) {
+      console.error(`ClientResponseError: ${error.message}`);
+      res.status(500).send(`Erreur de connexion avec PocketBase: ${error.message}`);
+    } else {
+      console.error('Erreur générale:', error);
+      res.status(500).send('Erreur de connexion avec PocketBase');
+    }
+  }
+});
+
 export default router;
