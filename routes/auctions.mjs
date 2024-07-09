@@ -4,14 +4,10 @@ import axios from 'axios';
 const router = express.Router();
 const pbUrl = 'https://pocketbase.0shura.fr';
 
+// Route pour obtenir toutes les enchères
 router.get('/', async (req, res) => {
     try {
-        const { userId } = req.query;
-        const response = await axios.get(`${pbUrl}/api/collections/auctions/records`, {
-            params: {
-                filter: `userId = '${userId}'`
-            }
-        });
+        const response = await axios.get(`${pbUrl}/api/collections/auctions/records`);
         res.json(response.data.items);
     } catch (error) {
         console.error('Erreur lors de la récupération des enchères:', error);

@@ -3,7 +3,7 @@ import cors from 'cors';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
 import FormData from 'form-data';
-import fetch from 'node-fetch'; // Assurez-vous que node-fetch est installé
+import fetch from 'node-fetch';
 
 const router = express.Router();
 
@@ -87,21 +87,18 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 
     // Ajouter les champs du corps de la requête à formData
     for (const [key, value] of Object.entries(req.body)) {
-      formData.append(key, value);
+      if (key === 'favorite_auctions_add') {
+        formData.append('favorite_auctions+', JSON.parse(value));
+      } else if (key === 'favorite_auctions_remove') {
+        formData.append('favorite_auctions-', JSON.parse(value));
+      } else {
+        formData.append(key, value);
+      }
     }
 
     // Ajouter les fichiers à formData
     if (req.file) {
       formData.append('avatar', req.file.buffer, req.file.originalname);
-    }
-
-    // Journaliser les champs ajoutés à formData
-    for (const [key, value] of Object.entries(req.body)) {
-      console.log(`formData - ${key}: ${value}`);
-    }
-
-    if (req.file) {
-      console.log(`formData - avatar: ${req.file.originalname}`);
     }
 
     const response = await fetch(`https://pocketbase.0shura.fr/api/collections/users/records/${id}`, {
