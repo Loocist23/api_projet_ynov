@@ -2,8 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
-import FormData from 'form-data';
-import fetch from 'node-fetch'; // Assurez-vous que node-fetch est installé
 
 const router = express.Router();
 
@@ -61,7 +59,7 @@ router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const record = await pb.collection('users').getOne(id, {
-      expand: 'relField1,relField2.subRelField'
+      expand: 'favorite_auctions'
     });
     res.json(record);
   } catch (error) {
@@ -96,7 +94,8 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 
     // Ajouter les fichiers à updateData
     if (req.file) {
-      updateData['avatar'] = req.file;
+      const fileData = new Blob([req.file.buffer], { type: req.file.mimetype });
+      updateData['avatar'] = fileData;
     }
 
     // Utiliser pb.collection.update pour mettre à jour l'enregistrement
