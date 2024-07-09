@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
+import { faker } from '@faker-js/faker';
+import { Buffer } from 'buffer';
+import fs from 'fs';
 
 const router = express.Router();
 
@@ -21,7 +24,8 @@ const upload = multer({ storage: storage });
 // Route pour obtenir une liste paginée
 router.get('/paginated', async (req, res) => {
   try {
-    const response = await pb.collection('users').getList(1, 30);
+    const { page = 1 } = req.query;
+    const response = await pb.collection('users').getList(page, 20);
     res.json(response);
   } catch (error) {
     console.error('Erreur lors de la récupération des données:', error);
@@ -127,6 +131,33 @@ router.get('/:id/avatar', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'avatar:', error);
     res.status(500).send('Erreur de connexion avec PocketBase');
+  }
+});
+
+// Route pour générer 20 utilisateurs aléatoires
+router.post('/generate-random-users', async (req, res) => {
+  try {
+    const imagePath = 'C:/Users/moi/WebstormProjects/api_projet_ynov/aa.jpg'; // Chemin vers votre image par défaut
+    const imageBuffer = fs.readFileSync(imagePath);
+
+    for (let i = 0; i < 20; i++) {
+      const formData = new FormData();
+      formData.append('username', faker.internet.userName());
+      formData.append('email', faker.internet.email());
+      formData.append('emailVisibility', true);
+      formData.append('password', 'password123');
+      formData.append('passwordConfirm', 'password123');
+      formData.append('birthdate', faker.date.past({ years: 20, refDate: new Date() }).toISOString().split('T')[0]);
+      formData.append('role', 'user');
+      formData.append('avatar', new Blob([imageBuffer], { type: 'image/jpeg' }), 'avatar.jpg');
+
+      await pb.collection('users').create(formData);
+    }
+
+    res.status(200).send('20 utilisateurs générés avec succès');
+  } catch (error) {
+    console.error('Erreur lors de la génération des utilisateurs:', error);
+    res.status(500).send('Erreur lors de la génération des utilisateurs');
   }
 });
 
