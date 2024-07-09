@@ -1,17 +1,23 @@
-var createError = require('http-errors');
-var express = require('express');
-var path = require('path');
-var cookieParser = require('cookie-parser');
-var logger = require('morgan');
-var cors = require('cors');
+import createError from 'http-errors';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import cookieParser from 'cookie-parser';
+import logger from 'morgan';
+import cors from 'cors';
+import indexRouter from './routes/index.mjs';
+import usersRouter from './routes/users.mjs';
+import auctionsRouter from './routes/auctions.mjs';
+import bidsRouter from './routes/bids.mjs';
 
-var indexRouter = require('./routes/index');
-var usersRouter = require('./routes/users');
+// Obtenir __dirname en utilisant import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-var app = express();
+const app = express();
 
 // Configuration CORS pour autoriser votre domaine front-end
-var corsOptions = {
+const corsOptions = {
   origin: 'http://localhost:3001', // L'URL de votre front-end
   optionsSuccessStatus: 200 // Certains navigateurs legacy (IE11, certains SmartTV) chokent sur 204
 };
@@ -29,6 +35,8 @@ app.use(cors(corsOptions));
 
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/auctions', auctionsRouter);
+app.use('/bids', bidsRouter);
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
@@ -46,4 +54,4 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
-module.exports = app;
+export default app;
