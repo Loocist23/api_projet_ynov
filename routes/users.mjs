@@ -161,4 +161,19 @@ router.post('/generate-random-users', async (req, res) => {
   }
 });
 
+router.get('/:id/favorites', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const resultList = await pb.collection('favorite').getList(1, 50, {
+      filter: `User="${id}"`,
+      expand: 'Auction'
+    });
+    res.json(resultList);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des favoris:', error);
+    res.status(500).send('Erreur lors de la récupération des favoris');
+  }
+});
+
+
 export default router;
