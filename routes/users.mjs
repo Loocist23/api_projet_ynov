@@ -3,7 +3,7 @@ import cors from 'cors';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
 import FormData from 'form-data';
-import fetch from 'node-fetch';
+import fetch from 'node-fetch'; // Assurez-vous que node-fetch est installé
 
 const router = express.Router();
 
@@ -80,43 +80,28 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
   try {
     const { id } = req.params;
 
-    console.log('Corps de la requête:', req.body);
-    console.log('Fichiers de la requête:', req.file);
+    // Préparer les données de mise à jour
+    const updateData = {};
 
-    const formData = new FormData();
-
-    // Ajouter les champs du corps de la requête à formData
+    // Ajouter les champs du corps de la requête à updateData
     for (const [key, value] of Object.entries(req.body)) {
       if (key === 'favorite_auctions_add') {
-        formData.append('favorite_auctions+', JSON.parse(value));
+        updateData['favorite_auctions+'] = JSON.parse(value);
       } else if (key === 'favorite_auctions_remove') {
-        formData.append('favorite_auctions-', JSON.parse(value));
+        updateData['favorite_auctions-'] = JSON.parse(value);
       } else {
-        formData.append(key, value);
+        updateData[key] = value;
       }
     }
 
-    // Ajouter les fichiers à formData
+    // Ajouter les fichiers à updateData
     if (req.file) {
-      formData.append('avatar', req.file.buffer, req.file.originalname);
+      updateData['avatar'] = req.file;
     }
 
-    const response = await fetch(`https://pocketbase.0shura.fr/api/collections/users/records/${id}`, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${pb.authStore.token}`,
-        ...formData.getHeaders()
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
-    }
-
-    const record = await response.json();
-    res.json(record);
+    // Utiliser pb.collection.update pour mettre à jour l'enregistrement
+    const updatedRecord = await pb.collection('users').update(id, updateData);
+    res.json(updatedRecord);
   } catch (error) {
     console.error('Erreur lors de la mise à jour de l\'enregistrement:', error);
     if (error instanceof ClientResponseError) {
@@ -143,52 +128,6 @@ router.get('/:id/avatar', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération de l\'avatar:', error);
     res.status(500).send('Erreur de connexion avec PocketBase');
-  }
-});
-
-// Route pour créer un utilisateur
-router.post('/create', upload.single('avatar'), async (req, res) => {
-  try {
-    console.log('Corps de la requête:', req.body);
-    console.log('Fichiers de la requête:', req.file);
-
-    const formData = new FormData();
-
-    // Ajouter les champs du corps de la requête à formData
-    for (const [key, value] of Object.entries(req.body)) {
-      formData.append(key, value);
-    }
-
-    // Ajouter les fichiers à formData
-    if (req.file) {
-      formData.append('avatar', req.file.buffer, req.file.originalname);
-    }
-
-    const response = await fetch(`https://pocketbase.0shura.fr/api/collections/users/records`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${pb.authStore.token}`,
-        ...formData.getHeaders()
-      },
-      body: formData
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`HTTP error! Status: ${response.status} - ${errorText}`);
-    }
-
-    const record = await response.json();
-    res.json(record);
-  } catch (error) {
-    console.error('Erreur lors de la création de l\'enregistrement:', error);
-    if (error instanceof ClientResponseError) {
-      console.error(`ClientResponseError: ${error.message}`);
-      res.status(500).send(`Erreur de connexion avec PocketBase: ${error.message}`);
-    } else {
-      console.error('Erreur générale:', error);
-      res.status(500).send('Erreur de connexion avec PocketBase');
-    }
   }
 });
 
