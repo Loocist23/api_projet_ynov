@@ -3,7 +3,6 @@ import cors from 'cors';
 import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
 import { faker } from '@faker-js/faker';
-import { Buffer } from 'buffer';
 import fs from 'fs';
 
 const router = express.Router();
@@ -21,11 +20,22 @@ pb.autoCancellation(false);
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-// Route pour obtenir une liste paginée
+// Route pour obtenir une liste paginée avec recherche et tri
 router.get('/paginated', async (req, res) => {
+  const { page = 1, search = '', sort = '' } = req.query;
+
   try {
-    const { page = 1 } = req.query;
-    const response = await pb.collection('users').getList(page, 20);
+    const queryOptions = {
+      page: parseInt(page),
+      perPage: 30,
+      filter: search ? `username ~ "${search}" || email ~ "${search}"` : '',
+      sort
+    };
+
+    const response = await pb.collection('users').getList(queryOptions.page, queryOptions.perPage, {
+      filter: queryOptions.filter,
+      sort: queryOptions.sort,
+    });
     res.json(response);
   } catch (error) {
     console.error('Erreur lors de la récupération des données:', error);
@@ -50,10 +60,17 @@ router.get('/all', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Supprimer l'utilisateur
     await pb.collection('users').delete(id);
+
     res.status(204).send(); // 204 No Content
   } catch (error) {
     console.error('Erreur lors de la suppression:', error);
+    if (error instanceof ClientResponseError && error.response.code === 400) {
+      // Gestion spécifique de l'erreur 400
+      console.error('Impossible de supprimer l\'enregistrement. Assurez-vous que l\'enregistrement ne fait pas partie d\'une référence de relation requise.');
+    }
     res.status(500).send('Erreur lors de la suppression de l’utilisateur');
   }
 });
@@ -98,8 +115,7 @@ router.put('/:id', upload.single('avatar'), async (req, res) => {
 
     // Ajouter les fichiers à updateData
     if (req.file) {
-      const fileData = new Blob([req.file.buffer], { type: req.file.mimetype });
-      updateData['avatar'] = fileData;
+      updateData['avatar'] = new Blob([req.file.buffer], { type: req.file.mimetype });
     }
 
     // Utiliser pb.collection.update pour mettre à jour l'enregistrement
@@ -174,6 +190,5 @@ router.get('/:id/favorites', async (req, res) => {
     res.status(500).send('Erreur lors de la récupération des favoris');
   }
 });
-
 
 export default router;
