@@ -4,6 +4,7 @@ import PocketBase, { ClientResponseError } from 'pocketbase';
 import multer from 'multer';
 import { faker } from '@faker-js/faker';
 import fs from 'fs';
+import axios from "axios";
 
 const router = express.Router();
 
@@ -177,10 +178,11 @@ router.post('/generate-random-users', async (req, res) => {
   }
 });
 
+// Route pour obtenir les favoris d'un utilisateur
 router.get('/:id/favorites', async (req, res) => {
   try {
     const { id } = req.params;
-    const resultList = await pb.collection('favorite').getList(1, 50, {
+    const resultList = await pb.collection('favorites').getList(1, 50, {
       filter: `User="${id}"`,
       expand: 'Auction'
     });
@@ -188,6 +190,60 @@ router.get('/:id/favorites', async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération des favoris:', error);
     res.status(500).send('Erreur lors de la récupération des favoris');
+  }
+});
+
+// Route pour envoyer une notification
+router.post('/send-notification', async (req, res) => {
+  const { playerId, message } = req.body;
+
+  try {
+    const response = await axios.post('https://onesignal.com/api/v1/notifications', {
+      app_id: 'd2a1db7e-1047-4cff-8d49-66a201075192',
+      include_player_ids: [playerId],
+      headings: { en: 'Notification' },
+      contents: { en: message },
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic MzI2NjE0MmMtMzM0Ny00YjcwLWI4NzgtZDlkNTk5ZjM2MTE3',
+      },
+    });
+
+    res.status(200).json({ success: true, data: response.data });
+  } catch (error) {
+    console.error('Error sending notification:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// Route pour créer un nouvel utilisateur
+router.post('/create', upload.single('avatar'), async (req, res) => {
+  try {
+    const { username, email, emailVisibility, password, passwordConfirm, birthdate, role, playerId } = req.body;
+
+    const formData = new FormData();
+    formData.append('username', username);
+    formData.append('email', email);
+    formData.append('emailVisibility', emailVisibility);
+    formData.append('password', password);
+    formData.append('passwordConfirm', passwordConfirm);
+    formData.append('birthdate', birthdate);
+    formData.append('role', role);
+    if (playerId) {
+      formData.append('playerId', playerId);
+    }
+    if (req.file) {
+      formData.append('avatar', new Blob([req.file.buffer], { type: req.file.mimetype }), req.file.originalname);
+    }
+
+    const record = await pb.collection('users').create(formData);
+    await pb.collection('users').requestVerification(email);
+
+    res.status(201).json(record);
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'utilisateur:', error);
+    res.status(500).send('Erreur lors de la création de l\'utilisateur');
   }
 });
 
